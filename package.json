@@ -1,0 +1,29 @@
+{
+  "name": "fastbatch-server",
+  "version": "1.0.0",
+  "description": "FASTBATCH - Smart Bulk Video Merger Backend",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch-path=src src/server.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "keywords": [
+    "video-merger",
+    "ffmpeg",
+    "express",
+    "fastbatch"
+  ],
+  "author": "FASTBATCH Team",
+  "license": "MIT",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {}
+}
