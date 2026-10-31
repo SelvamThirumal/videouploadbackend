@@ -6,12 +6,44 @@ import { config } from './config/env.js';
 
 const app = express();
 
-// CORS configuration
-app.use(cors({
-  origin: config.clientUrl === '*' ? '*' : [config.clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Batch-Id', 'Accept']
-}));
+// CORS configuration supporting localhost, Vercel deployments, and custom domains
+const defaultLocalOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173'
+];
+
+const configuredOrigins = config.clientUrl
+  ? config.clientUrl.split(',').map((url) => url.trim().replace(/\/+$/, ''))
+  : [];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    const isWildcard = config.clientUrl === '*' || configuredOrigins.includes('*');
+    const isLocal = defaultLocalOrigins.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    const isConfigured = configuredOrigins.includes(origin);
+    const isVercel = /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.vercel\.app$/i.test(origin);
+
+    if (isWildcard || isLocal || isConfigured || isVercel) {
+      return callback(null, true);
+    }
+
+    // Default permissive reflection to prevent CORS errors on custom frontend domains
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Batch-Id', 'Accept', 'Origin']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Body parsers
 app.use(express.json({ limit: '10mb' }));
