@@ -47,29 +47,18 @@ export async function uploadBatch(req, res) {
     }
 
     let totalUploadedSize = 0;
-    // 1. Probe all uploaded files in parallel for instant responsiveness
-    const probedResults = await Promise.all(
-      files.map(async (file) => {
-        try {
-          return await probeVideo(file.path);
-        } catch (_) {
-          return null;
-        }
-      })
-    );
-
+    // 1. Instantly parse filenames and prepare database records (0ms latency)
     const createdFileDocs = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const probed = probedResults[i];
       totalUploadedSize += file.size;
 
       // Extract original relative path if available from map
       const originalName = file.originalname;
       const relativePath = relativePathsMap[originalName] || file.originalname;
 
-      // Parse series & part number
+      // Parse series & part number instantly from filename
       const parsed = parseVideoFilename(originalName);
 
       const videoDocData = {
@@ -80,13 +69,13 @@ export async function uploadBatch(req, res) {
         partNumber: parsed.partNumber,
         filePath: file.path,
         fileSize: file.size,
-        status: probed ? 'analyzed' : 'uploaded',
-        duration: probed?.duration || 0,
-        videoCodec: probed?.videoCodec || 'unknown',
-        audioCodec: probed?.audioCodec || 'none',
-        width: probed?.width || 0,
-        height: probed?.height || 0,
-        fps: probed?.fps || 30
+        status: 'uploaded',
+        duration: 0,
+        videoCodec: 'unknown',
+        audioCodec: 'none',
+        width: 0,
+        height: 0,
+        fps: 30
       };
 
       createdFileDocs.push(videoDocData);
@@ -124,6 +113,31 @@ export async function uploadBatch(req, res) {
 
     // Group files for response
     const grouped = groupVideoFiles(allFiles);
+
+    // Asynchronous non-blocking background probe to enrich metadata without holding up user response
+    setImmediate(async () => {
+      for (const file of files) {
+        try {
+          const probed = await probeVideo(file.path);
+          if (probed && probed.duration > 0) {
+            await VideoFile.updateOne(
+              { batchId, originalName: file.originalname },
+              {
+                $set: {
+                  duration: probed.duration,
+                  videoCodec: probed.videoCodec,
+                  audioCodec: probed.audioCodec,
+                  width: probed.width,
+                  height: probed.height,
+                  fps: probed.fps,
+                  status: 'analyzed'
+                }
+              }
+            );
+          }
+        } catch (_) {}
+      }
+    });
 
     return res.status(201).json({
       batchId: batch.batchId,

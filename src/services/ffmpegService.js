@@ -63,6 +63,8 @@ export async function probeVideo(filePath) {
   const stat = await fs.promises.stat(filePath);
   const args = [
     '-v', 'error',
+    '-analyzeduration', '1000000',
+    '-probesize', '1000000',
     '-show_entries', 'stream=codec_name,codec_type,width,height,r_frame_rate,pix_fmt,sample_rate,channels',
     '-show_entries', 'format=duration,size',
     '-of', 'json',
