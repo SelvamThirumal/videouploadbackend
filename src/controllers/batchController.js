@@ -47,9 +47,22 @@ export async function uploadBatch(req, res) {
     }
 
     let totalUploadedSize = 0;
+    // 1. Probe all uploaded files in parallel for instant responsiveness
+    const probedResults = await Promise.all(
+      files.map(async (file) => {
+        try {
+          return await probeVideo(file.path);
+        } catch (_) {
+          return null;
+        }
+      })
+    );
+
     const createdFileDocs = [];
 
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const probed = probedResults[i];
       totalUploadedSize += file.size;
 
       // Extract original relative path if available from map
@@ -59,7 +72,7 @@ export async function uploadBatch(req, res) {
       // Parse series & part number
       const parsed = parseVideoFilename(originalName);
 
-      const videoDoc = new VideoFile({
+      const videoDocData = {
         batchId,
         originalName,
         relativePath,
@@ -67,23 +80,20 @@ export async function uploadBatch(req, res) {
         partNumber: parsed.partNumber,
         filePath: file.path,
         fileSize: file.size,
-        status: 'uploaded'
-      });
+        status: probed ? 'analyzed' : 'uploaded',
+        duration: probed?.duration || 0,
+        videoCodec: probed?.videoCodec || 'unknown',
+        audioCodec: probed?.audioCodec || 'none',
+        width: probed?.width || 0,
+        height: probed?.height || 0,
+        fps: probed?.fps || 30
+      };
 
-      // Probe in background or immediately
-      try {
-        const probed = await probeVideo(file.path);
-        videoDoc.duration = probed.duration;
-        videoDoc.videoCodec = probed.videoCodec;
-        videoDoc.audioCodec = probed.audioCodec;
-        videoDoc.width = probed.width;
-        videoDoc.height = probed.height;
-        videoDoc.fps = probed.fps;
-        videoDoc.status = 'analyzed';
-      } catch (_) {}
+      createdFileDocs.push(videoDocData);
+    }
 
-      await videoDoc.save();
-      createdFileDocs.push(videoDoc);
+    if (createdFileDocs.length > 0) {
+      await VideoFile.insertMany(createdFileDocs);
     }
 
     // Update batch totals
