@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import batchRoutes from './routes/batchRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
+import toolsRoutes from './routes/toolsRoutes.js';
 import { config } from './config/env.js';
 
 const app = express();
@@ -52,6 +53,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // API routes
 app.use('/api/health', healthRoutes);
 app.use('/api/batches', batchRoutes);
+app.use('/api/tools', toolsRoutes);
 
 // Root informational endpoint
 app.get('/', (req, res) => {
