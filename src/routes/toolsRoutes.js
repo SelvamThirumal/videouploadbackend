@@ -56,3 +56,4 @@ router.post('/video-to-image', upload.single('video'), handleVideoToImage);
 router.get('/download/:token/:fileName', handleToolDownload);
 
 export default router;
+

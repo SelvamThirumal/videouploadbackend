@@ -3,6 +3,7 @@ import cors from 'cors';
 import batchRoutes from './routes/batchRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 import toolsRoutes from './routes/toolsRoutes.js';
+import studioRoutes from './routes/studioRoutes.js';
 import { config } from './config/env.js';
 
 const app = express();
@@ -54,6 +55,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api/health', healthRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/tools', toolsRoutes);
+app.use('/api/studio', studioRoutes);
 
 // Root informational endpoint
 app.get('/', (req, res) => {

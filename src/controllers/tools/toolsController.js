@@ -443,3 +443,4 @@ export async function handleToolDownload(req, res) {
     return res.status(500).json({ error: 'Download failed.' });
   }
 }
+
